@@ -1,73 +1,78 @@
-# Standalone WiFi Scanner (Minimal Network Manager Alternative)
+WiFi Connection Manager — Evil-Twin Aware Edition
 
-## 🔐 Overview
-A lightweight, command-line WiFi management and scanning tool designed as a minimal alternative to traditional Linux networking services like NetworkManager.
+A hardened, standalone Python-based WiFi connection utility for Linux. This tool moves beyond simple scanning by implementing an Evil-Twin detection engine and a BSSID Trust Store to protect against rogue access points and man-in-the-middle (MITM) attacks.
+🛡️ Security Features
+1. Trusted-BSSID Store
 
-This tool prioritizes:
-- **Low attack surface**
-- **Simplicity**
-- **Direct control over wireless operations**
+The script maintains a local database of known-good hardware addresses at ~/.config/wifi-guardian/trusted_bssids.json.
 
-It is intended for users who want a **lean, transparent, and security-conscious approach** to managing WiFi connections on Linux systems.
+    First Visit: When you successfully connect to a new SSID, its BSSID is saved.
 
----
+    Subsequent Visits: Every observed BSSID is compared against the trusted record. If a known SSID suddenly appears with a different BSSID, the script flags it immediately.
 
-## 🧠 Why This Exists
+2. Multi-Layer Threat Analysis
 
-Modern Linux distributions commonly rely on NetworkManager for wireless networking. While feature-rich, it introduces:
+During every scan, the tool applies three heuristic rules to identify potential "Evil Twins":
 
-- Large codebase and complexity
-- Inconsistent behavior across environments
-- Increased attack surface
-- Dependency-heavy architecture
+    LA-bit Rule (CRITICAL): Detects BSSIDs with the "Locally Administered" bit set (indicating a software-defined MAC address). Unless previously trusted, these are blocked outright.
 
-This project was built with a different philosophy:
+    Clone Rule (HIGH): Identifies pairs of BSSIDs that differ by only 1 or 2 octets. This is a common indicator of an attacker mimicking a legitimate network or a rogue AP mimicking a multi-node mesh system.
 
-> **Networking should be simple, auditable, and predictable**
+    Signal Spread (MEDIUM): Flags SSIDs broadcasting on multiple channels with a significant signal strength delta (>10 dBm), which can indicate a nearby rogue device attempting to overpower a legitimate AP.
 
----
+3. Connection Gatekeeping
 
-## ⚙️ Key Features
+    Blocked Access: Networks flagged as CRITICAL cannot be joined through the script.
 
-- 📡 Direct WiFi scanning (SSID, signal strength, etc.)
-- 🧩 Minimal dependencies
-- ⚡ Fast execution
-- 🖥️ Fully CLI-driven
-- 🔍 Transparent behavior (no hidden abstraction layers)
+    Override Protection: Networks with HIGH or MEDIUM warnings require explicit user confirmation or a "yes" override to proceed.
 
----
+    Post-Connect Verification: After gaining an IP address, the tool re-verifies the connected BSSID. If the AP switched or spoofed the BSSID during the handshake, it alerts the user to disconnect immediately.
 
-## 🛠️ Use Cases
+🚀 Requirements
 
-- Replacing NetworkManager in hardened environments
-- Minimal Linux systems (servers, labs, security setups)
-- Security-conscious users reducing attack surface
-- Debugging wireless issues without layered abstractions
-- Controlled environments where predictability matters
+    OS: Linux (tested on Debian/Ubuntu/Kali)
 
----
+    Privileges: Must be run as root (sudo) to manage network interfaces.
 
-## 🔐 Security Philosophy
+    Dependencies:
 
-This tool is built around a core principle:
+        iw: For scanning and link status.
 
-> **Every additional layer increases attack surface**
+        wpa_supplicant / wpa_passphrase: For authentication.
 
-Compared to traditional network management stacks, this approach:
+        dhclient: For obtaining IP addresses.
 
-- Reduces complexity
-- Minimizes potential vulnerabilities
-- Avoids unnecessary background services
-- Keeps behavior fully observable
+        iproute2: For interface management.
 
-This aligns with real-world security practices where:
-- Smaller systems are easier to secure
-- Simpler code is easier to audit
-- Fewer dependencies reduce risk
+🛠️ Usage
 
----
+    Clone the repository:
+    Bash
 
-## 🚀 Usage
+git clone https://github.com/microlaser/Standalone_WiFi_Scanner.git
+cd Standalone_WiFi_Scanner
 
-```bash
-python3 standalone_wifi_scanner.py
+Run the manager:
+Bash
+
+    sudo python3 wifi-connect3.py
+
+    Interact:
+
+        Select a network from the numbered list.
+
+        Observe the Status column for Trusted, First-time, or Suspicious indicators.
+
+        If prompted, enter the WPA2 passphrase.
+
+📁 File Structure
+
+    wifi-connect3.py: The main executable script.
+
+    ~/.config/wifi-guardian/: Directory where the BSSID trust store is maintained (created on first run).
+
+    /tmp/wpa_supplicant_temp.conf: A temporary, permission-hardened (0600) config file generated during the connection process.
+
+⚖️ Disclaimer
+
+This tool is designed for security-conscious users and forensic investigators. While it provides significant protection against common WiFi attacks, it is not a substitute for a VPN or end-to-end encryption. Always verify your network environment when handling sensitive data.
